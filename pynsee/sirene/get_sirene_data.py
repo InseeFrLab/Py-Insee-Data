@@ -5,7 +5,7 @@ import pandas as pd
 from functools import lru_cache
 import re
 
-from pynsee.utils._request_insee import _request_insee
+from pynsee.utils.requests_session import PynseeAPISession
 from pynsee.utils._make_dataframe_from_dict import _make_dataframe_from_dict
 from pynsee.utils.HiddenPrints import HiddenPrints
 
@@ -64,15 +64,17 @@ def get_sirene_data(*id):
 
             try:
                 with HiddenPrints():
-                    request = _request_insee(
-                        api_url=link,
-                        file_format="application/json;charset=utf-8",
-                    )
+                    with PynseeAPISession() as session:
+                        request = session.request_insee(
+                            api_url=link,
+                            file_format="application/json;charset=utf-8",
+                            raise_if_not_ok=True,
+                        )
 
                     data_request = request.json()
                 try:
                     data = data_request[main_key]
-                except Exception:
+                except:
                     main_key_list = [
                         key
                         for key in list(data_request.keys())
@@ -82,7 +84,7 @@ def get_sirene_data(*id):
                     data = data_request[main_key]
 
                 data_final = _make_dataframe_from_dict(data)
-            except Exception:
+            except:
                 pass
             else:
                 list_data.append(data_final)
