@@ -46,7 +46,7 @@ def search_sirene(
     legal=False,
     closed=False,
     update=False,
-    silent=False,
+    silent=True,
 ):
     """Get data about companies from criteria on variables
 

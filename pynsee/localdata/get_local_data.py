@@ -38,7 +38,7 @@ def get_local_data(
     nivgeo="FE",
     geocodes=["1"],
     update=False,
-    silent=False,
+    silent=True,
     backwardperiod=6,
 ):
     """Get INSEE local numeric data

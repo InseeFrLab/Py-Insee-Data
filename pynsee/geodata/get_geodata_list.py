@@ -6,7 +6,7 @@ from pynsee.utils.save_df import save_df
 
 
 @save_df(day_lapse_max=90)
-def get_geodata_list(update=False, silent=False):
+def get_geodata_list(update=False, silent=True):
     """Get a list of geographical limits of French administrative areas from IGN API
 
     Args:

@@ -14,7 +14,7 @@ from pynsee.utils.save_df import save_df
 def get_dataset(
     dataset,
     update=False,
-    silent=False,
+    silent=True,
     metadata=True,
     filter=None,
     startPeriod=None,
@@ -29,6 +29,8 @@ def get_dataset(
         dataset (str): an INSEE dataset included in the list provided by get_dataset_list()
 
         update (bool, optional): Set to True, to update manually the data stored locally on the computer. Defaults to False.
+
+        silent (bool, optional): Set to True, to disable messages printed in log info
 
         metadata (bool, optional): If True, some metadata is added to the data
 
@@ -61,7 +63,7 @@ def get_dataset(
         >>> business_climate = get_dataset("CLIMAT-AFFAIRES", lastNObservations = 1)
     """
 
-    insee_dataset = get_dataset_list(silent=True)
+    insee_dataset = get_dataset_list(silent=silent)
     insee_dataset_list = insee_dataset["id"].to_list()
 
     # check if the dataset exists in INSEE's list
@@ -106,8 +108,7 @@ def get_dataset(
     # add metadata
     if metadata:
         try:
-
-            idbank_list = get_series_list(dataset, silent=True)
+            idbank_list = get_series_list(dataset, silent=silent)
 
             newcol = [
                 col for col in idbank_list.columns if col not in data.columns
