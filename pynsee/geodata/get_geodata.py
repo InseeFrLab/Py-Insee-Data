@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import warnings
 from pynsee.geodata.GeoFrDataFrame import GeoFrDataFrame
 from pynsee.geodata._get_geodata import _get_geodata
 
@@ -26,11 +25,7 @@ def get_geodata(id, update=False, crs="EPSG:3857"):
 
     """
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-
-        df = _get_geodata(id=id, update=update, crs=crs)
-
-        df = GeoFrDataFrame(df)
+    df = _get_geodata(id=id, update=update, crs=crs)
+    df = GeoFrDataFrame(df)
 
     return df

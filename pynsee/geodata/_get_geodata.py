@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import time
 import pandas as pd
 import requests
 import multiprocessing
+import pebble
 import tqdm
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import urllib3
-import warnings
 
 from pynsee.geodata._get_bbox_list import _get_bbox_list
 from pynsee.geodata._get_data_with_bbox import _get_data_with_bbox2
@@ -16,10 +14,7 @@ from pynsee.geodata._get_data_with_bbox import _set_global_var
 from pynsee.geodata._geojson_parser import _geojson_parser
 
 from pynsee.utils.save_df import save_df
-from pynsee.utils.requests_params import (
-    _get_requests_headers,
-    _get_requests_proxies,
-)
+from pynsee.utils.requests_session import PynseeAPISession
 
 import logging
 
@@ -74,6 +69,7 @@ def _get_geodata(
 
     link0 = (
         geoportail
+        # + "/wfs?"
         + Service
         + version
         + request
@@ -109,35 +105,20 @@ def _get_geodata(
     else:
         link = link0
 
-    with requests.Session() as session:
-        retry = Retry(connect=3, backoff_factor=1)
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
+    with PynseeAPISession() as session:
 
-        headers = _get_requests_headers()
-        proxies = _get_requests_proxies()
+        try:
+            data = session.get(link, verify=False)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter(
-                "ignore", urllib3.exceptions.InsecureRequestWarning
+        except requests.exceptions.RequestException as exc:
+            logger.critical(exc)
+            return pd.DataFrame(
+                {
+                    "status": exc.response.status_code,
+                    "comment": exc.response.text,
+                },
+                index=[0],
             )
-            data = session.get(
-                link, proxies=proxies, headers=headers, verify=False
-            )
-
-            if data.status_code == 502:
-                time.sleep(1)
-                data = session.get(link, proxies=proxies, headers=headers)
-
-            if data.status_code != 200:
-                logger.debug("Query:\n%s" % link)
-                logger.debug(data)
-                logger.debug(data.text)
-                return pd.DataFrame(
-                    {"status": data.status_code, "comment": data.text},
-                    index=[0],
-                )
 
     data_json = data.json()
 
@@ -155,17 +136,24 @@ def _get_geodata(
         args = [link0, list_bbox, crsPolygon]
         irange = range(len(list_bbox))
 
-        with multiprocessing.Pool(
-            initializer=_set_global_var,
-            initargs=(args,),
-            processes=Nprocesses,
-        ) as pool:
-            list_data = list(
-                tqdm.tqdm(
-                    pool.imap(_get_data_with_bbox2, irange),
-                    total=len(list_bbox),
+        with requests.Session() as session:
+            retry = Retry(connect=3, backoff_factor=1, status_forcelist=[502])
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+
+            def _get_data_with_bbox3(i):
+                return _get_data_with_bbox2(session, i)
+
+            with pebble.ThreadPool(
+                Nprocesses, initializer=_set_global_var, initargs=(args,)
+            ) as pool:
+                list_data = list(
+                    tqdm.tqdm(
+                        pool.map(_get_data_with_bbox3, irange).result(),
+                        total=len(list_bbox),
+                    )
                 )
-            )
 
         data_all = pd.concat(list_data).reset_index(drop=True)
 
